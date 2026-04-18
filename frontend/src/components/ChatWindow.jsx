@@ -78,7 +78,8 @@ export default function ChatWindow({ messages, isLoading, onExampleClick }) {
         />
       ))}
 
-      {isLoading && (
+      {/* Show typing dots only before first token arrives */}
+      {isLoading && (messages.length === 0 || messages[messages.length - 1]?.role !== "assistant" || !messages[messages.length - 1]?.content) && (
         <div className="typing-indicator">
           <div className="message-avatar">🤖</div>
           <div className="typing-dots">

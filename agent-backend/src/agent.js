@@ -1,6 +1,7 @@
 /**
  * Agent — LLM orchestration with OpenAI function-calling and MCP tool execution.
  * Implements the agentic loop: send → tool_call? → execute → feed back → repeat.
+ * Supports both synchronous (processMessage) and streaming (processMessageStream) modes.
  */
 
 import OpenAI from "openai";
@@ -43,20 +44,23 @@ You have access to the following tools:
 const conversations = new Map();
 
 /**
- * Process a chat message through the agentic loop.
- * Returns { response, conversationId, toolCalls }
+ * Get or initialize conversation history.
  */
-export async function processMessage(message, conversationId) {
-  // Get or create conversation history
+function getHistory(conversationId) {
   if (!conversations.has(conversationId)) {
     conversations.set(conversationId, [
       { role: "system", content: SYSTEM_PROMPT },
     ]);
   }
+  return conversations.get(conversationId);
+}
 
-  const history = conversations.get(conversationId);
-
-  // Add user message
+/**
+ * Process a chat message through the agentic loop (synchronous).
+ * Returns { response, conversationId, toolCalls }
+ */
+export async function processMessage(message, conversationId) {
+  const history = getHistory(conversationId);
   history.push({ role: "user", content: message });
 
   const toolDefinitions = getOpenAIToolDefinitions();
@@ -74,8 +78,6 @@ export async function processMessage(message, conversationId) {
     });
 
     const assistantMessage = completion.choices[0].message;
-
-    // Add assistant message to history
     history.push(assistantMessage);
 
     // If no tool calls, we have our final response
@@ -137,6 +139,131 @@ export async function processMessage(message, conversationId) {
     conversationId,
     toolCalls: toolCallLog,
   };
+}
+
+/**
+ * Process a chat message through the agentic loop with SSE streaming.
+ * Emits events via the `emit` callback:
+ *   { type: "token",     content: "..." }           — streamed LLM text token
+ *   { type: "tool_start", tool: "...", args: {...} } — tool call begins
+ *   { type: "tool_end",   tool: "...", result: "..." } — tool call finished
+ *   { type: "done",       toolCalls: [...] }         — full response complete
+ *   { type: "error",      message: "..." }           — error occurred
+ */
+export async function processMessageStream(message, conversationId, emit) {
+  const history = getHistory(conversationId);
+  history.push({ role: "user", content: message });
+
+  const toolDefinitions = getOpenAIToolDefinitions();
+  const toolCallLog = [];
+
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    console.log(`[Agent-Stream] Round ${round + 1} — Streaming from LLM...`);
+
+    const stream = await openai.chat.completions.create({
+      model: MODEL,
+      messages: history,
+      tools: toolDefinitions.length > 0 ? toolDefinitions : undefined,
+      tool_choice: toolDefinitions.length > 0 ? "auto" : undefined,
+      stream: true,
+    });
+
+    // Accumulate the streamed response
+    let contentBuffer = "";
+    let toolCalls = [];                // accumulated tool_calls from deltas
+    let finishReason = null;
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta;
+      finishReason = chunk.choices?.[0]?.finish_reason || finishReason;
+
+      if (!delta) continue;
+
+      // Stream text tokens to client
+      if (delta.content) {
+        contentBuffer += delta.content;
+        emit({ type: "token", content: delta.content });
+      }
+
+      // Accumulate tool call deltas
+      if (delta.tool_calls) {
+        for (const tcDelta of delta.tool_calls) {
+          const idx = tcDelta.index;
+
+          // Initialize a new tool call entry if needed
+          if (!toolCalls[idx]) {
+            toolCalls[idx] = {
+              id: tcDelta.id || "",
+              function: { name: "", arguments: "" },
+            };
+          }
+
+          if (tcDelta.id) toolCalls[idx].id = tcDelta.id;
+          if (tcDelta.function?.name) toolCalls[idx].function.name += tcDelta.function.name;
+          if (tcDelta.function?.arguments) toolCalls[idx].function.arguments += tcDelta.function.arguments;
+        }
+      }
+    }
+
+    // Build the complete assistant message for history
+    const assistantMessage = { role: "assistant", content: contentBuffer || null };
+    if (toolCalls.length > 0) {
+      assistantMessage.tool_calls = toolCalls.map((tc) => ({
+        id: tc.id,
+        type: "function",
+        function: { name: tc.function.name, arguments: tc.function.arguments },
+      }));
+    }
+    history.push(assistantMessage);
+
+    // If no tool calls → final response, we are done
+    if (toolCalls.length === 0 || finishReason === "stop") {
+      console.log("[Agent-Stream] Final response streamed.");
+      emit({ type: "done", conversationId, toolCalls: toolCallLog });
+      return;
+    }
+
+    // Execute each tool call
+    for (const tc of toolCalls) {
+      const fnName = tc.function.name;
+      let fnArgs;
+      try {
+        fnArgs = JSON.parse(tc.function.arguments);
+      } catch {
+        fnArgs = {};
+        console.warn(`[Agent-Stream] Failed to parse tool args: ${tc.function.arguments}`);
+      }
+
+      console.log(`[Agent-Stream] Tool call: ${fnName}(${JSON.stringify(fnArgs)})`);
+      emit({ type: "tool_start", tool: fnName, args: fnArgs });
+
+      let toolResult;
+      try {
+        toolResult = await callMcpTool(fnName, fnArgs);
+      } catch (err) {
+        toolResult = `Error executing tool: ${err.message}`;
+        console.error(`[Agent-Stream] Tool error:`, err.message);
+      }
+
+      toolCallLog.push({ tool: fnName, args: fnArgs, result: toolResult });
+      emit({ type: "tool_end", tool: fnName, result: toolResult });
+
+      history.push({
+        role: "tool",
+        tool_call_id: tc.id,
+        content: toolResult,
+      });
+    }
+
+    // Next round will stream the LLM's response after tool results
+  }
+
+  console.warn("[Agent-Stream] Max tool rounds reached.");
+  emit({
+    type: "done",
+    conversationId,
+    toolCalls: toolCallLog,
+  });
 }
 
 /**

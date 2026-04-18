@@ -22,6 +22,9 @@ function parseToolResults(toolCalls) {
   const parsed = [];
 
   for (const tc of toolCalls) {
+    // Skip tool calls that haven't completed yet (result is null)
+    if (tc.result === null || tc.result === undefined) continue;
+
     try {
       const data = JSON.parse(tc.result);
 
@@ -41,10 +44,14 @@ function parseToolResults(toolCalls) {
 }
 
 export default function MessageBubble({ message, onSuggestionClick, isLast }) {
-  const { role, content, toolCalls } = message;
+  const { role, content, toolCalls, isStreaming } = message;
   const isUser = role === "user";
 
   const structuredResults = isUser ? [] : parseToolResults(toolCalls);
+
+  // Identify tool calls that are currently in progress (result === null)
+  const pendingTools = (toolCalls || []).filter((tc) => tc.result === null);
+  const completedTools = (toolCalls || []).filter((tc) => tc.result !== null);
 
   return (
     <div className={`message ${role}`}>
@@ -52,7 +59,25 @@ export default function MessageBubble({ message, onSuggestionClick, isLast }) {
         {isUser ? "👤" : "🤖"}
       </div>
       <div className="message-content">
-        <ReactMarkdown>{content}</ReactMarkdown>
+        {/* Render markdown content + streaming cursor */}
+        {content && (
+          <>
+            <ReactMarkdown>{content}</ReactMarkdown>
+            {isStreaming && <span className="streaming-cursor" />}
+          </>
+        )}
+
+        {/* Show pending tool calls with spinner */}
+        {pendingTools.length > 0 && (
+          <div className="tool-calls-section">
+            {pendingTools.map((tc, i) => (
+              <span key={`pending-${i}`} className="tool-calling-indicator">
+                <span className="tool-calling-spinner" />
+                Calling {tc.tool}…
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Render structured cards */}
         {structuredResults.map((sr, i) => {
@@ -74,10 +99,10 @@ export default function MessageBubble({ message, onSuggestionClick, isLast }) {
           return null;
         })}
 
-        {/* Tool call badges */}
-        {toolCalls && toolCalls.length > 0 && (
+        {/* Completed tool call badges */}
+        {completedTools.length > 0 && (
           <div className="tool-calls-section">
-            {toolCalls.map((tc, i) => (
+            {completedTools.map((tc, i) => (
               <span key={i} className="tool-badge">
                 {tc.tool}
               </span>
@@ -85,8 +110,8 @@ export default function MessageBubble({ message, onSuggestionClick, isLast }) {
           </div>
         )}
 
-        {/* Quick action suggestion chips — show only on the last assistant message */}
-        {!isUser && isLast && onSuggestionClick && (
+        {/* Quick action suggestion chips — show only on the last assistant message when not streaming */}
+        {!isUser && isLast && !isStreaming && onSuggestionClick && (
           <div className="suggestion-chips">
             {SUGGESTION_CHIPS.map((chip, i) => (
               <button

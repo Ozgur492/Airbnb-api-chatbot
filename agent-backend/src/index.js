@@ -1,6 +1,7 @@
 /**
- * Agent Backend — Express server with /api/chat endpoint.
+ * Agent Backend — Express server with /api/chat and /api/chat/stream endpoints.
  * Bridges the React frontend with the AI agent + MCP tools.
+ * Supports both synchronous JSON responses and real-time Server-Sent Events (SSE).
  */
 
 import "dotenv/config";
@@ -8,7 +9,11 @@ import express from "express";
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
 import { initMcpClient, closeMcpClient } from "./mcpClient.js";
-import { processMessage, clearConversation } from "./agent.js";
+import {
+  processMessage,
+  processMessageStream,
+  clearConversation,
+} from "./agent.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +28,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// ─── Chat Endpoint ───────────────────────────────────────────────────────────
+// ─── Chat Endpoint (synchronous JSON) ────────────────────────────────────────
 
 app.post("/api/chat", async (req, res) => {
   try {
@@ -59,6 +64,49 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
+// ─── Chat Stream Endpoint (Server-Sent Events) ──────────────────────────────
+
+app.post("/api/chat/stream", async (req, res) => {
+  const { message, conversationId: incomingConvId } = req.body;
+
+  if (!message || typeof message !== "string" || message.trim() === "") {
+    return res.status(400).json({ error: "Message is required." });
+  }
+
+  const conversationId = incomingConvId || uuidv4();
+
+  console.log(`\n[Server] SSE stream request — conv: ${conversationId}`);
+  console.log(`[Server] User message: "${message.substring(0, 100)}..."`);
+
+  // SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering if proxied
+  res.flushHeaders();
+
+  // Send conversationId immediately so frontend can track it
+  res.write(`data: ${JSON.stringify({ type: "start", conversationId })}\n\n`);
+
+  try {
+    await processMessageStream(
+      message.trim(),
+      conversationId,
+      (event) => {
+        // Write each event as an SSE data line
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    );
+  } catch (err) {
+    console.error("[Server] SSE stream error:", err);
+    res.write(
+      `data: ${JSON.stringify({ type: "error", message: err.message })}\n\n`
+    );
+  }
+
+  res.end();
+});
+
 // ─── Clear Conversation ──────────────────────────────────────────────────────
 
 app.delete("/api/chat/:conversationId", (req, res) => {
@@ -88,8 +136,9 @@ async function start() {
   // Start Express server
   app.listen(PORT, () => {
     console.log(`[Server] Agent backend listening on http://localhost:${PORT}`);
-    console.log(`[Server] Chat endpoint: POST http://localhost:${PORT}/api/chat`);
-    console.log(`[Server] Health check:  GET  http://localhost:${PORT}/api/health\n`);
+    console.log(`[Server] Chat endpoint:   POST http://localhost:${PORT}/api/chat`);
+    console.log(`[Server] Stream endpoint: POST http://localhost:${PORT}/api/chat/stream (SSE)`);
+    console.log(`[Server] Health check:    GET  http://localhost:${PORT}/api/health\n`);
   });
 }
 
