@@ -191,8 +191,11 @@ airbnb-chatbot/
 └── README.md                      # This file
 ```
 
-## 🎥 Demo Video
-[Video link will be added here]
+## Demo Video
+
+https://github.com/user-attachments/assets/demo-video.mp4
+
+[▶ Watch Demo Video](demo-video.mp4)
 
 ## ☁️ Azure Deployment Architecture
 
