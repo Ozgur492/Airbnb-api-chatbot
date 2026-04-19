@@ -3,6 +3,16 @@
 **SE4458 Software Architecture & Design — Assignment 2**  
 Student: Özgür Can Güngör
 
+## 🌐 Live Deployment
+
+| Component | URL |
+|---|---|
+| **Frontend + Backend** | https://staybot-backend-ozgur492.azurewebsites.net |
+| **Health Check** | https://staybot-backend-ozgur492.azurewebsites.net/api/health |
+| **API Gateway (VM)** | http://51.107.187.183:9090 |
+
+> Deployed on Azure — VM (midterm API stack: Spring Boot + PostgreSQL + Redis), App Service B1 Linux (Agent Backend + MCP Server + React Frontend).
+
 ## 📋 Project Description
 
 StayBot is a full-stack AI Agent chat application that enables users to interact with an Airbnb-like rental platform through natural language conversations. It integrates with an existing REST API (developed in the midterm project) using the **Model Context Protocol (MCP)** to bridge AI capabilities with real API operations.
@@ -184,6 +194,35 @@ airbnb-chatbot/
 ## 🎥 Demo Video
 [Video link will be added here]
 
+## ☁️ Azure Deployment Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│        Azure App Service (B1 Linux)         │
+│    staybot-backend-ozgur492.azurewebsites   │
+│                                             │
+│  ┌──────────────┐  ┌───────────────────┐    │
+│  │ React SPA    │  │ Agent Backend     │    │
+│  │ (dist/)      │  │ Express + OpenAI  │    │
+│  │ served via   │  │ + MCP Client      │    │
+│  │ express      │  │                   │    │
+│  │ .static()    │  │ Spawns MCP Server │    │
+│  └──────────────┘  └───────────────────┘    │
+└──────────────────────┬──────────────────────┘
+                       │ HTTP :9090
+              ┌────────▼────────┐
+              │  Azure VM (B2s) │
+              │  51.107.187.183 │
+              │  docker-compose │
+              │  ┌────────────┐ │
+              │  │  Gateway   │ │
+              │  │  API       │ │
+              │  │  PostgreSQL│ │
+              │  │  Redis     │ │
+              │  └────────────┘ │
+              └─────────────────┘
+```
+
 ## 📚 Technologies Used
 - **Frontend**: React 19, Vite 6, react-markdown
 - **Agent Backend**: Node.js, Express, OpenAI SDK
@@ -193,8 +232,9 @@ airbnb-chatbot/
 - **Existing API**: Spring Boot, PostgreSQL, Redis, Spring Cloud Gateway
 
 ## 📝 Assumptions
-1. The Airbnb API is running locally via docker-compose before starting the chatbot.
+1. The Airbnb API is running via docker-compose (locally or on Azure VM) before starting the chatbot.
 2. A single guest user (`guest@test.com`) is sufficient for the demo.
-3. The API gateway is accessible at `localhost:9090`.
+3. The API gateway is accessible at `GATEWAY_URL` environment variable (default: `localhost:9090`).
 4. OpenAI API is used for LLM (requires internet access and API key).
 5. All API calls go through the gateway (port 9090). The backend never bypasses the gateway.
+6. For Azure deployment, the `OPENAI_API_KEY` is stored as an App Service secret, never in the repository.
