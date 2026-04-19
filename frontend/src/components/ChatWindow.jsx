@@ -3,19 +3,19 @@ import MessageBubble from "./MessageBubble.jsx";
 
 const WELCOME_CARDS = [
   {
-    icon: "🔍",
+    icon: "Q",
     title: "Query Listing",
     desc: "Find the perfect stay by city, dates, and guests",
     query: "Find me a listing in Istanbul for June 1-5 for 2 people",
   },
   {
-    icon: "⭐",
+    icon: "B",
     title: "Book a Listing",
     desc: "Reserve a listing with guest names and dates",
     query: "Book listing #1 for June 1-5 for John Doe and Jane Doe",
   },
   {
-    icon: "📝",
+    icon: "R",
     title: "Review a Listing",
     desc: "Rate and review your completed bookings",
     query: "Leave a 5-star review for booking #1: Amazing place!",
@@ -81,7 +81,7 @@ export default function ChatWindow({ messages, isLoading, onExampleClick }) {
       {/* Show typing dots only before first token arrives */}
       {isLoading && (messages.length === 0 || messages[messages.length - 1]?.role !== "assistant" || !messages[messages.length - 1]?.content) && (
         <div className="typing-indicator">
-          <div className="message-avatar">🤖</div>
+          <div className="message-avatar">AI</div>
           <div className="typing-dots">
             <span></span>
             <span></span>

@@ -7,9 +7,9 @@ import ReviewCard from "./ReviewCard.jsx";
  * Quick action suggestion chips shown after assistant responses.
  */
 const SUGGESTION_CHIPS = [
-  { label: "🔍 Query Listing", query: "Search for listings" },
-  { label: "⭐ Book a Listing", query: "I want to book a listing" },
-  { label: "📝 Review a Listing", query: "I want to review a booking" },
+  { label: "Query Listing", query: "Search for listings" },
+  { label: "Book a Listing", query: "I want to book a listing" },
+  { label: "Review a Listing", query: "I want to review a booking" },
 ];
 
 /**
@@ -56,7 +56,7 @@ export default function MessageBubble({ message, onSuggestionClick, isLast }) {
   return (
     <div className={`message ${role}`}>
       <div className="message-avatar">
-        {isUser ? "👤" : "🤖"}
+        {isUser ? "U" : "AI"}
       </div>
       <div className="message-content">
         {/* Render markdown content + streaming cursor */}

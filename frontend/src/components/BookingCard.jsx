@@ -19,7 +19,7 @@ export default function BookingCard({ booking }) {
     <div className="booking-card" id={`booking-card-${displayId}`}>
       <div className="booking-card-header">
         <div className="booking-card-header-left">
-          <span className="booking-icon">✅</span>
+          <span className="booking-icon">&#10003;</span>
           <div>
             <h4>Stay successfully booked!</h4>
             {listingTitle && (
@@ -55,7 +55,7 @@ export default function BookingCard({ booking }) {
 
       {guestNames && guestNames.length > 0 && (
         <div className="booking-guests">
-          <span className="guest-icon">👤</span>
+          <span className="guest-icon"></span>
           <span>{guestNames.join(" · ")}</span>
         </div>
       )}

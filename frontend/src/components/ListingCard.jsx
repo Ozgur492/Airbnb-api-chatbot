@@ -56,11 +56,11 @@ export default function ListingCard({ listing }) {
         </div>
 
         <div className="listing-card-location">
-          📍 {city}, {country}
+          {city}, {country}
         </div>
 
         <div className="listing-card-meta">
-          <span>👥 {numberOfPeople} guests</span>
+          <span>{numberOfPeople} guests</span>
           <span className="listing-card-id-badge">#{id}</span>
         </div>
 

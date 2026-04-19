@@ -222,7 +222,7 @@ export default function App() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="brand-icon">🏠</div>
+          <div className="brand-icon">S</div>
           <div className="brand-text">
             <h1>StayBot</h1>
             <p>AI Travel Assistant</p>
@@ -234,7 +234,7 @@ export default function App() {
           onClick={startNewChat}
           id="new-chat-button"
         >
-          <span className="icon">✨</span>
+          <span className="icon">+</span>
           New Conversation
         </button>
 
@@ -256,7 +256,7 @@ export default function App() {
 
         <div className="sidebar-info">
           <div className="sidebar-info-card">
-            <h3>💡 How it works</h3>
+            <h3>How it works</h3>
             <p>
               I use AI to understand your travel needs and search the Airbnb
               platform for you. I can find listings, make bookings, and submit

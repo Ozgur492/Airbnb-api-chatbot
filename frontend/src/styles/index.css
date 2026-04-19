@@ -648,7 +648,7 @@ body {
 }
 
 .tool-badge::before {
-  content: "⚡";
+  content: ">";
   font-size: 0.65rem;
 }
 

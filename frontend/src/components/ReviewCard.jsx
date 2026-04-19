@@ -13,7 +13,7 @@ export default function ReviewCard({ review }) {
   return (
     <div className="review-card" id={`review-card-${id || bookingId}`}>
       <div className="review-card-header">
-        <h4>⭐ Review Submitted</h4>
+        <h4>Review Submitted</h4>
         <div className="star-rating">{stars}</div>
       </div>
       {comment && <p className="review-comment">"{comment}"</p>}
