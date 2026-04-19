@@ -193,7 +193,7 @@ airbnb-chatbot/
 
 ## Demo Video
 
-<video src="https://github.com/Ozgur492/Airbnb-api-chatbot/raw/main/demo-video.mp4" controls width="100%"></video>
+[Watch Demo Video on Google Drive](https://drive.google.com/drive/u/0/my-drive)
 
 ## ☁️ Azure Deployment Architecture
 
