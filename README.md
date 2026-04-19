@@ -193,7 +193,7 @@ airbnb-chatbot/
 
 ## Demo Video
 
-[Watch Demo Video on Google Drive](https://drive.google.com/drive/u/0/my-drive)
+[Watch Demo Video on Google Drive](https://drive.google.com/file/d/1HdS6_s7e9td5pWgU5HsxXM04aUD4f7eG/view?usp=sharing)
 
 ## ☁️ Azure Deployment Architecture
 
