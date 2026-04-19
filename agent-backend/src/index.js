@@ -7,6 +7,8 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import { v4 as uuidv4 } from "uuid";
 import { initMcpClient, closeMcpClient } from "./mcpClient.js";
 import {
@@ -15,11 +17,16 @@ import {
   clearConversation,
 } from "./agent.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "*",
+  credentials: true,
+  methods: ["GET", "POST", "DELETE", "OPTIONS"]
+}));
 app.use(express.json());
 
 // ─── Health Check ────────────────────────────────────────────────────────────
@@ -114,6 +121,18 @@ app.delete("/api/chat/:conversationId", (req, res) => {
   res.json({ status: "cleared" });
 });
 
+// ─── Serve Frontend (production) ─────────────────────────────────────────────
+
+const frontendDist = path.resolve(__dirname, "../../frontend/dist");
+app.use(express.static(frontendDist));
+
+// SPA catch-all: any non-API route serves the React app
+app.get("*", (req, res, next) => {
+  // Don't catch API routes
+  if (req.path.startsWith("/api")) return next();
+  res.sendFile(path.join(frontendDist, "index.html"));
+});
+
 // ─── Startup ─────────────────────────────────────────────────────────────────
 
 async function start() {
@@ -121,25 +140,31 @@ async function start() {
   console.log("  Airbnb AI Agent Backend Starting  ");
   console.log("====================================\n");
 
-  // Initialize MCP client (spawns the MCP server)
-  try {
-    await initMcpClient();
-    console.log("[Server] MCP client initialized successfully.\n");
-  } catch (err) {
-    console.error("[Server] Failed to initialize MCP client:", err.message);
-    console.error(
-      "[Server] Make sure the MCP server dependencies are installed."
-    );
-    process.exit(1);
-  }
-
-  // Start Express server
+  // Start Express server FIRST so Azure health probe succeeds
   app.listen(PORT, () => {
     console.log(`[Server] Agent backend listening on http://localhost:${PORT}`);
     console.log(`[Server] Chat endpoint:   POST http://localhost:${PORT}/api/chat`);
     console.log(`[Server] Stream endpoint: POST http://localhost:${PORT}/api/chat/stream (SSE)`);
     console.log(`[Server] Health check:    GET  http://localhost:${PORT}/api/health\n`);
   });
+
+  // Initialize MCP client (spawns the MCP server) — retry on failure
+  const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      await initMcpClient();
+      console.log("[Server] MCP client initialized successfully.\n");
+      break;
+    } catch (err) {
+      console.error(`[Server] MCP init attempt ${attempt}/${MAX_RETRIES} failed:`, err.message);
+      if (attempt === MAX_RETRIES) {
+        console.error("[Server] MCP client failed after all retries. Chat will not work until MCP is available.");
+      } else {
+        console.log(`[Server] Retrying MCP init in 5 seconds...`);
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+    }
+  }
 }
 
 // Graceful shutdown

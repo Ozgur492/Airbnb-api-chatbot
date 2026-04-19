@@ -1,0 +1,11 @@
+{
+  "name": "staybot-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install": "cd mcp-server && npm install && cd ../agent-backend && npm install",
+    "start": "cd agent-backend && node src/index.js",
+    "build": "echo 'No build step needed'"
+  },
+  "engines": { "node": ">=20.0.0" }
+}

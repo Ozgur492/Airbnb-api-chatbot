@@ -2,6 +2,8 @@ import { useState, useCallback, useRef } from "react";
 import ChatWindow from "./components/ChatWindow.jsx";
 import ChatInput from "./components/ChatInput.jsx";
 
+const API_URL = import.meta.env.VITE_API_URL || "";
+
 const EXAMPLE_QUERIES = [
   "Find listings in Istanbul for June 1-5 for 2 people",
   "Search for places in Paris for 2 guests, July 10-15",
@@ -55,7 +57,7 @@ export default function App() {
       abortRef.current = controller;
 
       try {
-        const res = await fetch("/api/chat/stream", {
+        const res = await fetch(`${API_URL}/api/chat/stream`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -209,7 +211,7 @@ export default function App() {
     }
     // Optionally clear on server
     if (conversationId) {
-      fetch(`/api/chat/${conversationId}`, { method: "DELETE" }).catch(() => {});
+      fetch(`${API_URL}/api/chat/${conversationId}`, { method: "DELETE" }).catch(() => {});
     }
     setMessages([]);
     setConversationId(null);

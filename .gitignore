@@ -26,3 +26,9 @@ npm-debug.log*
 
 # Lock files (optional — uncomment to track)
 # package-lock.json
+
+# Deployment artifacts
+deploy/
+testdeploy/
+*.zip
+staybot-logs*/
