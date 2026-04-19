@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "install": "cd mcp-server && npm install && cd ../agent-backend && npm install",
-    "start": "cd agent-backend && node src/index.js",
-    "build": "echo 'No build step needed'"
+    "install": "cd mcp-server && npm install && cd ../agent-backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "postinstall": "npm run build",
+    "start": "cd agent-backend && node src/index.js"
   },
   "engines": { "node": ">=20.0.0" }
 }
